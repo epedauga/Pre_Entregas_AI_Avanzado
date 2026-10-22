@@ -1,0 +1,236 @@
+{
+  "name": "PRE ENTREGA 1 - EDGAR PEDAUGA",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -32,
+        0
+      ],
+      "id": "44a9eb17-4ec8-4bbb-bc81-c683a23e0f10",
+      "name": "Telegram Trigger"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        176,
+        240
+      ],
+      "id": "bf244857-038d-4dbf-bfae-7ab6e3de8482",
+      "name": "Groq Chat Model"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=SOLICITUD REGISTRADA CORRECTAMENTE\n\n{{ $json.output }}\n\nGracias por enviar tu solicitud.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "a227a954-6934-400c-979a-fe361bc856c2",
+      "name": "Respuesta"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "# AGENTE DE GESTIÓN DE SOLICITUDES EMPRESARIALES\n\n## [ROL Y ÁMBITO]\n\nSos un asistente que recibe solicitudes empresariales por Telegram. Tu función es interpretarlas, generar un título breve, resumir el mensaje, asignar una prioridad y registrar la solicitud en Airtable. No ejecutes la tarea solicitada.\n\n## [REGLAS DE CLASIFICACIÓN]\n\nAsigná una prioridad según estos criterios:\n- **Alta:** problema crítico, urgencia importante o riesgo significativo.\n- **Media:** requiere atención, pero no es crítica.\n- **Baja:** consulta rutinaria o mejora no urgente.\n\nNo inventes información ni supongas urgencia sin indicios suficientes. Si no podés identificar la solicitud, hacé una única pregunta para aclararla.\n\n## [REGLAS DE USO DE HERRAMIENTAS]\n\nUsá la herramienta `Registrar solicitud` para crear un registro en Airtable cuando la solicitud sea clara, con estos campos:\n- `Nombre`: título breve y descriptivo.\n- `mensaje_original`: mensaje original recibido por Telegram.\n- `Prioridad`: Alta, Media o Baja.\n- `Estado`: Pendiente.\n\nNo inventes datos. Confirmá el registro únicamente si la herramienta informa que se creó correctamente. Si falla, indicá que no se pudo registrar.\n\n## [PROTOCOLO DE SEGURIDAD]\n\n- No ejecutes las tareas solicitadas.\n- No modifiques ni elimines registros existentes.\n- No realices operaciones financieras ni acciones externas.\n- No confirmes operaciones que no se hayan completado.\n\n## [ESTILO]\n\nRespondé en español argentino, con un tono natural, claro, cordial y profesional. Sé breve. Tras registrar una solicitud, informá su título y prioridad. Si necesitás aclaraciones, hacé una única pregunta directa.",
+          "maxIterations": 5
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "93088324-800a-424c-a676-1e78282eeb6a",
+      "name": "AI Agent - Asistente de Gestión Empresarial",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create a record in Airtable",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Sistema de Gestión de Solicitudes"
+        },
+        "table": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Solicitudes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nombre": "={{ $fromAI('nombre') }}",
+            "mensaje_original": "={{ $('Telegram Trigger').first().json.message.text }}",
+            "Estado": "Pendiente",
+            "Prioridad": "={{ $fromAI('prioridad', 'Seleccioná exactamente una opción: Alta, Media o Baja, según la urgencia de la solicitud.', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "mensaje_original",
+              "displayName": "mensaje_original",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Prioridad",
+              "displayName": "Prioridad",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Alta",
+                  "value": "Alta"
+                },
+                {
+                  "name": "Media",
+                  "value": "Media"
+                },
+                {
+                  "name": "Baja",
+                  "value": "Baja"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Pendiente",
+                  "value": "Pendiente"
+                },
+                {
+                  "name": "En revisión",
+                  "value": "En revisión"
+                },
+                {
+                  "name": "Resuelto",
+                  "value": "Resuelto"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        224
+      ],
+      "id": "77acccc8-1b5b-42a6-9864-2ccc64d2435b",
+      "name": "Registrar solicitud",
+      "notesInFlow": false
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Asistente de Gestión Empresarial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Asistente de Gestión Empresarial",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Asistente de Gestión Empresarial": {
+      "main": [
+        [
+          {
+            "node": "Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar solicitud": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Asistente de Gestión Empresarial",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": []
+}
