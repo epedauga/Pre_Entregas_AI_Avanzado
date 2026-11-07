@@ -41,7 +41,7 @@ También se resolvió un error de límite de tokens de Groq mediante un nodo Wai
 ## Archivos
 
 - `checkpoint4_edgar_pedauga.json` — Manager principal.
-- `subworkflows/` — Workers y servicio HubSpot.
+- `sub workflows/` — Workers y servicio HubSpot.
 - `evidencias/` — Capturas de autenticación.
 
 **Importación:** importar primero los subworkflows y después el Manager; configurar credenciales propias y revisar las referencias.
