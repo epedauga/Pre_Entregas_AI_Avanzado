@@ -46,4 +46,4 @@ También se resolvió un error de límite de tokens de Groq mediante un nodo Wai
 
 **Importación:** importar primero los subworkflows y después el Manager; configurar credenciales propias y revisar las referencias.
 
-**Estado:** Prototipo funcional M4. Auditoría de scopes OAuth2 pendiente.
+**Estado:** Prototipo funcional M4.
