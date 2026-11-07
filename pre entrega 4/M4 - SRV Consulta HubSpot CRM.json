@@ -1,0 +1,420 @@
+{
+  "name": "M4 - SRV Consulta HubSpot CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "solicitud_ref"
+            },
+            {
+              "name": "mensaje_original"
+            },
+            {
+              "name": "email"
+            },
+            {
+              "name": "operacion_solicitada"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        -16
+      ],
+      "id": "7ab598c4-dc37-4f97-8780-0ede1926e7ae",
+      "name": "TRG - Entrada Consulta HubSpot"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e267b13-3fff-4b47-bdae-f6bad1655386",
+              "name": "solicitud_ref",
+              "value": "={{ String($json.solicitud_ref ?? '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "48c84535-e6c6-46f4-bec2-1c7968eca3f0",
+              "name": "mensaje_original",
+              "value": "={{ String($json.mensaje_original ?? '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "229da370-359c-41ed-9b08-b33548f326e4",
+              "name": "email",
+              "value": "={{ String($json.email ?? '').trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "5c7d74d8-a7ea-4330-9a19-c05242fabc8a",
+              "name": "operacion_solicitada",
+              "value": "={{ String($json.operacion_solicitada ?? '').trim().toUpperCase() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        64,
+        -16
+      ],
+      "id": "dd020fa6-1a46-4f80-bdef-d3a53732854c",
+      "name": "SET - Normalizar Entrada HubSpot"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a3c0a43a-859f-4797-9dfc-7d2721c7a625",
+              "leftValue": "={{ $json.operacion_solicitada }}",
+              "rightValue": "BUSCAR",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "cffd6fcf-60fe-4016-9f97-1cb1bb57772b",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "6d4247f2-2353-4aa3-9cdd-fe24cb6b8d9a",
+              "leftValue": "={{ $json.solicitud_ref }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "d21a26b0-06a2-4ce8-a4be-c0ba091a2a9e",
+              "leftValue": "={{ $json.mensaje_original }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        288,
+        -16
+      ],
+      "id": "90c8e409-4d47-4adc-98f8-a62b2a6e35cf",
+      "name": "IF - Validar Entrada HubSpot"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "search",
+        "limit": 10,
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "email|string",
+                    "value": "={{ $json.email }}"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        544,
+        -144
+      ],
+      "id": "71aed983-8284-444b-8f26-5b7d6f5c5889",
+      "name": "HUB - Buscar Contacto por Email",
+      "alwaysOutputData": true,
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "ByY7FTT1qgTiQHUV",
+          "name": "HubSpot NEXORA"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const entrada = $input.all();\n\nconst contactos = entrada\n  .map(item => item.json)\n  .filter(contacto => contacto.id != null && String(contacto.id).trim() !== \"\");\n\nconst cantidad = contactos.length;\n\nlet estado = \"SIN_COINCIDENCIAS\";\n\nif (cantidad === 1) {\n  estado = \"UNICO\";\n} else if (cantidad > 1) {\n  estado = \"MULTIPLES\";\n}\n\nreturn [{\n  json: {\n    cantidad_contactos: cantidad,\n    estado_busqueda: estado,\n    contactos: contactos.map(contacto => ({\n      id: String(contacto.id),\n      email: contacto.properties?.email ?? \"\",\n      nombre: contacto.properties?.firstname ?? \"\",\n      apellido: contacto.properties?.lastname ?? \"\"\n    }))\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        -240
+      ],
+      "id": "ca968d99-2265-4b9f-8798-5f09915d6baf",
+      "name": "CODE - Evaluar Resultados HubSpot"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f9319b73-e255-4bb6-a180-3748ee7d9528",
+              "name": "solicitud_ref",
+              "value": "={{ $('TRG - Entrada Consulta HubSpot').first().json.solicitud_ref }}",
+              "type": "string"
+            },
+            {
+              "id": "1b5063c6-9aca-4a1a-aff9-381dc5f44868",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "1c97487e-011a-41c8-8a61-2e7fab09d914",
+              "name": "estado_busqueda",
+              "value": "={{ $json.estado_busqueda }}",
+              "type": "string"
+            },
+            {
+              "id": "1356fc1a-3138-42e6-9dde-c2143ab1fed0",
+              "name": "cantidad_contactos",
+              "value": "={{ $json.cantidad_contactos }}",
+              "type": "number"
+            },
+            {
+              "id": "2a63b1fa-b77d-4dc4-be47-1790eafbfdb5",
+              "name": "contactos",
+              "value": "={{ $json.contactos }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1024,
+        -240
+      ],
+      "id": "e4adfb62-040c-4239-98af-7fe5ab4a2485",
+      "name": "SET - Resultado Consulta HubSpot"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8f64fbbe-cc06-4140-b766-5b9c26b6f9a6",
+              "name": "solicitud_ref",
+              "value": "={{ $json.solicitud_ref }}",
+              "type": "string"
+            },
+            {
+              "id": "5e155a11-0e7e-4423-9def-5f822617497c",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "dc161dcc-c6dd-464d-8bdc-fb55d5f58fc9",
+              "name": "estado_busqueda",
+              "value": "ENTRADA_INVALIDA",
+              "type": "string"
+            },
+            {
+              "id": "55571552-fd07-41da-b42f-015b6bf3f0ab",
+              "name": "cantidad_contactos",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "14e5b29c-18ed-4751-ad2f-b94d8d7df7c9",
+              "name": "contactos",
+              "value": "={{ [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        544,
+        112
+      ],
+      "id": "536e9300-19b0-45b7-b128-d3a98b0c059b",
+      "name": "SET - Consulta HubSpot Rechazada"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d705cd06-c8bb-477d-aaee-9ffc8acb9b0b",
+              "name": "solicitud_ref",
+              "value": "={{ $('TRG - Entrada Consulta HubSpot').first().json.solicitud_ref }}",
+              "type": "string"
+            },
+            {
+              "id": "2c426deb-4ae4-43e6-b839-58323f510c18",
+              "name": "=success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "4fecd581-10ca-4bce-8ad3-63e7f695b2a7",
+              "name": "estado_busqueda",
+              "value": "ERROR_TECNICO",
+              "type": "string"
+            },
+            {
+              "id": "91a91655-d60f-40f0-abfc-bcc0f6423d48",
+              "name": "cantidad_contactos",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "e71f1b15-7905-40a5-b99a-27c290a71a7c",
+              "name": "contactos",
+              "value": "={{ [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        816,
+        -48
+      ],
+      "id": "84705dec-2545-41ca-abdf-5bf56b088436",
+      "name": "SET - Error Técnico HubSpot"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "TRG - Entrada Consulta HubSpot": {
+      "main": [
+        [
+          {
+            "node": "SET - Normalizar Entrada HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SET - Normalizar Entrada HubSpot": {
+      "main": [
+        [
+          {
+            "node": "IF - Validar Entrada HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Validar Entrada HubSpot": {
+      "main": [
+        [
+          {
+            "node": "HUB - Buscar Contacto por Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SET - Consulta HubSpot Rechazada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HUB - Buscar Contacto por Email": {
+      "main": [
+        [
+          {
+            "node": "CODE - Evaluar Resultados HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SET - Error Técnico HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE - Evaluar Resultados HubSpot": {
+      "main": [
+        [
+          {
+            "node": "SET - Resultado Consulta HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1d1fd5b7-2328-42b6-a4f7-c4c84320c61b",
+  "meta": {
+    "instanceId": "1a5266f5fb464ab7e4f2151b9783e754c91c53dc3dbf46b693c9ce22354eaced"
+  },
+  "nodeGroups": [],
+  "id": "ZuOPAvjMrEFwKICw",
+  "tags": [
+    {
+      "updatedAt": "2026-10-21T01:39:45.096Z",
+      "createdAt": "2026-10-21T01:39:45.096Z",
+      "id": "TtJazrxIQmTA7ruB",
+      "name": "AI AUTOMATION AVANZADO"
+    }
+  ]
+}
